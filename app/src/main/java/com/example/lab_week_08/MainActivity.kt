@@ -1,6 +1,9 @@
 package com.example.lab_week_08
 
 import android.os.Bundle
+import android.os.Build
+import android.content.Intent
+import android.content.pm.PackageManager
 import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
@@ -26,6 +29,14 @@ class MainActivity : AppCompatActivity() {
             v.setPadding(systemBars.left, systemBars.top, systemBars.right,
                 systemBars.bottom)
             insets
+        }
+        // Request runtime notification permission on Android 13+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) !=
+                PackageManager.PERMISSION_GRANTED) {
+
+                requestPermissions(arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), 1)
+            }
         }
         //Create a constraint of which your workers are bound to.
         //Here the workers cannot execute the given process if
@@ -80,6 +91,8 @@ class MainActivity : AppCompatActivity() {
             .observe(this) { info ->
                 if (info.state.isFinished) {
                     showResult("Second process is done")
+                    // Launch notification service when second worker finishes
+                    launchNotificationService()
                 }
             }
     }
@@ -91,5 +104,21 @@ class MainActivity : AppCompatActivity() {
     //Show the result as toast
     private fun showResult(message: String) {
         Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
+    }
+
+    // Launch the NotificationService
+    private fun launchNotificationService() {
+        // Observe if the service process is done or not
+        NotificationService.trackingCompletion.observe(this) { Id ->
+            showResult("Process for Notification Channel ID $Id is done!")
+        }
+
+        // Create an Intent to start the NotificationService
+        val serviceIntent = Intent(this, NotificationService::class.java).apply {
+            putExtra(NotificationService.EXTRA_ID, "001")
+        }
+
+        // Start the foreground service through the Service Intent
+        androidx.core.content.ContextCompat.startForegroundService(this, serviceIntent)
     }
 }
